@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Pokémon</title>
+    <style>
+        :root {
+            --poke-red: #ef5350;
+            --poke-blue: #3b4cca;
+            --poke-yellow: #ffcb05;
+            --light-gray: #f8f9fa;
+            --dark-text: #2d3436;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #e0e0e0;
+            margin: 0;
+            color: var(--dark-text);
+        }
+
+        /* Navbar estilo Login */
+        .navbar {
+            background-color: var(--poke-red);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: 0.3s;
+        }
+
+        .logout-btn:hover { background: white; color: var(--poke-red); }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            color: var(--dark-text);
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 1px 1px 0px white;
+        }
+
+        /* Barra de búsqueda */
+        .search-container {
+            background: white;
+            padding: 10px;
+            border-radius: 50px;
+            display: flex;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        .search-container input {
+            flex: 1;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            border-radius: 50px 0 0 50px;
+            outline: none;
+        }
+
+        .search-container button {
+            background-color: var(--poke-blue);
+            color: white;
+            border: none;
+            padding: 0 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .search-container button:hover { background-color: #2a38a3; transform: scale(1.02); }
+
+        /* Tarjeta principal */
+        .main-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card-header {
+            background-color: var(--poke-red);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pokemon-id { font-weight: bold; font-size: 1.5rem; opacity: 0.8; }
+
+        .card-body { padding: 40px; text-align: center; }
+
+        .main-sprite { width: 200px; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.1)); }
+
+        .types-container { margin: 15px 0; }
+        .type-badge {
+            display: inline-block;
+            background: var(--poke-blue);
+            color: white;
+            padding: 6px 18px;
+            border-radius: 20px;
+            margin: 0 5px;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        /* Variantes Regionales */
+        .variations-container {
+            margin-top: 25px;
+            padding: 15px;
+            background: #f1f2f6;
+            border-radius: 15px;
+        }
+
+        .variations-list {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .var-link {
+            text-decoration: none;
+            color: var(--dark-text);
+            background: white;
+            padding: 8px 15px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: 0.2s;
+        }
+
+        .var-link:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .var-link img { width: 35px; margin-right: 8px; }
+
+        /* Sección de Localizaciones */
+        .locations-section {
+            background-color: var(--light-gray);
+            padding: 30px;
+            border-top: 1px solid #eee;
+            text-align: left;
+        }
+
+        .game-group { margin-bottom: 20px; }
+        .game-title {
+            color: var(--poke-red);
+            font-size: 1.2rem;
+            margin: 0 0 8px 0;
+            display: block;
+            border-bottom: 2px solid #eee;
+        }
+        .route-list { list-style: none; padding-left: 20px; margin: 0; }
+        .route-list li {
+            position: relative;
+            padding: 4px 0;
+            color: #444;
+        }
+        .route-list li::before { content: "•"; color: var(--poke-blue); font-weight: bold; position: absolute; left: -15px; }
+
+        /* Sección de Evoluciones */
+        .evolution-section {
+            padding: 30px;
+            border-top: 1px solid #eee;
+        }
+
+        .evo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .evo-link {
+            text-decoration: none;
+            color: var(--dark-text);
+            transition: transform 0.2s;
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .evo-link:hover {
+            background-color: var(--light-gray);
+            transform: translateY(-5px);
+        }
+
+        .evo-link img { width: 80px; display: block; margin: 0 auto; }
+        .evo-link span { font-weight: bold; text-transform: capitalize; margin-top: 10px; display: block; }
+
+        .error-box {
+            background-color: #fee;
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 5px solid #d32f2f;
+            margin-bottom: 20px;
+        }
+
+        .arrow { font-size: 2rem; color: #ccc; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div style="font-weight: bold;">Pokédex</div>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <span sec:authentication="name">Usuario</span>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit" class="logout-btn">Cerrar Sesión</button>
+        </form>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>Buscador de Pokémon</h1>
+
+    <form th:action="@{/pokemon}" method="get" class="search-container">
+        <input type="text" name="name"
+               placeholder="Ej: Bulbasaur, Charmander, Squirtle..." required>
+        <button type="submit">ANALIZAR</button>
+    </form>
+
+    <div th:if="${error}" class="error-box">
+        <strong th:text="${error}">Error</strong>
+    </div>
+
+    <div th:if="${pokemon}" class="main-card">
+
+        <div class="card-header">
+            <h2 th:text="${#strings.capitalize(pokemon.name)}" style="margin:0; font-size: 2rem;">Nombre</h2>
+            <div class="pokemon-id" th:text="'#' + ${pokemon.id}">#000</div>
+        </div>
+
+        <div class="card-body">
+            <img th:src="${pokemon.spriteUrl}" th:alt="${pokemon.name}" class="main-sprite">
+            <div class="types-container">
+                <span th:each="type : ${pokemon.types}" th:text="${type}" class="type-badge">Tipo</span>
+            </div>
+
+            <!-- SECCIÓN RESTAURADA: Variaciones Regionales -->
+            <div th:if="${not #lists.isEmpty(pokemon.varieties)}" class="variations-container">
+                <span style="font-size: 0.75rem; font-weight: bold; color: #777; text-transform: uppercase;">Variaciones detectadas</span>
+                <div class="variations-list">
+                    <a th:each="var : ${pokemon.varieties}"
+                       th:href="@{/pokemon(name=${var.name})}" class="var-link">
+                        <img th:src="${var.spriteUrl}" th:alt="${var.name}">
+                        <span th:text="${#strings.capitalize(var.name.replace('-', ' '))}">forma</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-section locations-section">
+            <h3 style="margin-top: 0; color: var(--dark-text);">📍 Hábitats y Versiones</h3>
+
+            <div th:if="${#lists.isEmpty(pokemon.encounters)}">
+                <p style="color: #888; font-style: italic;">Este Pokémon no se encuentra en estado salvaje.</p>
+            </div>
+
+            <div th:each="enc : ${pokemon.encounters}" class="game-group" style="margin-bottom: 20px;">
+                <strong class="game-title" th:text="${enc.gamesString}">Juego</strong>
+                <ul class="route-list">
+                    <li th:each="loc : ${enc.locations}" th:text="${loc}">Ruta</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="evolution-section">
+            <h3 style="margin-top: 0;">🧬 Línea Evolutiva</h3>
+            <div class="evo-container">
+                <th:block th:each="evo, iter : ${pokemon.evolutions}">
+                    <a th:href="@{/pokemon(name=${evo.name})}" class="evo-link">
+                        <img th:src="${evo.spriteUrl}" th:alt="${evo.name}">
+                        <span th:text="${evo.name}">pichu</span>
+                        <div style="display: flex; justify-content: center; gap: 3px; margin-top: 5px;">
+                            <small th:each="t : ${evo.types}" th:text="${t}"
+                                   style="background: #ddd; padding: 2px 5px; border-radius: 3px; font-size: 0.6rem;"></small>
+                        </div>
+                    </a>
+                    <span th:if="${!iter.last}" class="arrow">➔</span>
+                </th:block>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

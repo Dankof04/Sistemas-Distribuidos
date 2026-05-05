@@ -1,0 +1,50 @@
+services:
+  # --- BASE DE DATOS (PostgreSQL) ---
+  db:
+    image: postgres:15-alpine
+    container_name: pokemon-db
+    environment:
+      POSTGRES_DB: practicapokemon_db
+      POSTGRES_USER: ubu_user
+      POSTGRES_PASSWORD: ubu_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ubu_user -d practicapokemon_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- API PYTHON (Flask) ---
+  python-api:
+    build: ./python-api
+    container_name: pokemon-python-api
+    ports:
+      - "5000:5000"
+    restart: always
+
+  # --- FRONTEND JAVA (Spring Boot) ---
+  spring-frontend:
+    build: ./spring-frontend
+    container_name: pokemon-spring-app
+    ports:
+      - "8080:8080"
+    environment:
+      # Sobrescribimos la configuración de application.properties para el entorno Docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/practicapokemon_db
+      SPRING_DATASOURCE_USERNAME: ubu_user
+      SPRING_DATASOURCE_PASSWORD: ubu_password
+      # Importante: usamos el nombre del servicio 'python-api' definido arriba
+      API_PYTHON_URL: http://python-api:5000/api/pokemon/
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      db:
+        condition: service_healthy
+      python-api:
+        condition: service_started
+    restart: always
+
+volumes:
+  postgres_data:
